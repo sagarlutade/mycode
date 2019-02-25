@@ -1,0 +1,52 @@
+---
+- hosts: [rhev]
+  gather_facts: no
+
+
+  tasks:
+    - name: Host registration to Satellite.
+      yum:  name=katello-ca-consumer-latest.noarch state=absent
+
+
+#    - name: Get the katello-ca from Satellite.
+#      get_url:
+#          url: https://satellite_fqdn/pub/katello-ca-consumer-latest.noarch.rpm
+#          dest: /root
+
+#    - name: install the ca-consumer
+#        yum:
+#        shell: yum localinstall /root/katello-ca-consumer-latest.noarch.rpm
+
+    - name: Katllo-ca istall
+      yum:
+        name: https://satellite_fqdn/pub/katello-ca-consumer-latest.noarch.rpm
+        state: present
+
+
+    - name: System registration using Activation Key.
+      redhat_subscription:
+            state: present
+            activationkey: RHEL7_Base
+            org_id: Default_Organization
+            auto_attach: true
+
+    - name: Install katello-agent and puppet config.
+      yum:
+        name: katello-agent puppet
+        state: latest
+        notify:
+          - Start katello-agent
+          - Enable katello-agent
+
+    - lineinfile:
+          path: /etc/puppetlabs/puppet/puppet.conf
+          regexp: '^server='
+          line: 'server=puppet_server_or_satllite_fqdn'
+
+      ######### PUPPET ###########
+
+    - name: Run puppet command and print on the console.
+      shell: puppet agent -tv
+      register: puppet
+    - debug: var=puppet.stdout_lines
+############################
